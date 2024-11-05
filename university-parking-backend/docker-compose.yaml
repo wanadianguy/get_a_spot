@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+
+  database:
+    container_name: database
+    image: mongo:latest
+    command: [ "mongod", "--port", "27017", "--bind_ip_all" ]
+    ports:
+      - 10010:27017
+    environment:
+      - MONGO_INITDB_DATABASE=university-parking
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh database:27017/test --quiet
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    volumes:
+      # - ./data:/docker-entrypoint-initdb.d:ro
+      - ./init-database.js:/docker-entrypoint-initdb.d/init.js
+
+  database-planning:
+    container_name: database-planning
+    image: postgres:latest
+    ports:
+      - 10011:5432
+    environment:
+      POSTGRES_DB: planning
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - ./planning-data/:/var/lib/postgresql/data/
+      - ./init-database-planning.sql:/docker-entrypoint-initdb.d/init.sql
+
+  app:
+    container_name: app
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - 8080:8080
+    build:
+      context: .
+      dockerfile: springboot-dockerfile
+    environment:
+      - MONGODB_HOST=database
+      - MONGODB_PORT=27017
+      - MONGODB_DATABASE=university-parking
+      - MONGODB_USERNAME=root
+      - MONGODB_PASSWORD=root
+      - POSTGRES_HOST=database-planning
+      - POSTGRES_PORT=5432
+      - POSTGRES_DATABASE=planning
+      - POSTGRES_USERNAME=user
+      - POSTGRES_PASSWORD=password

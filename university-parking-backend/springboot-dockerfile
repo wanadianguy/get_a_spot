@@ -1,0 +1,14 @@
+FROM maven:3.8.7-openjdk-18
+
+# Define default repository
+WORKDIR /app
+
+# Copy the POM file and the rest of the code
+COPY pom.xml .
+COPY src src
+
+# Building the project
+RUN mvn clean package -DskipTests
+
+CMD sh -c 'java -jar $(find ./target -name *.jar -type f)'
+
